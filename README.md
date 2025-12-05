@@ -15,8 +15,8 @@ pip install .
 
 ## Resultat sur le test set (4 derniers mois) 
 
-MAE en production (backtest) : 47 (≈ 8 % de la puissance moyenne sur la période),
-contre un MAE de 161 pour un modèle naïf utilisant la valeur observée une semaine plus tôt (P(t) = P(t−672)).
+MAE en production (backtest) : 47 kW (≈ 8 % de la puissance moyenne sur la période),
+contre un MAE de 161 kw pour un modèle naïf utilisant la valeur observée une semaine plus tôt (P(t) = P(t−672)).
 
 → Le modèle XGBoost réduit donc l’erreur d’environ 70 % par rapport à ce modèle naif.
 

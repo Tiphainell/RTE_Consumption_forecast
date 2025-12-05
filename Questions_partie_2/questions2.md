@@ -5,6 +5,7 @@
 - Analyser les features les plus importantes - tester une régularization des features
 - Tester d'autres hyperparamètres pour XG boost ( Séparer la base en train, val, et test pour le faire pour choisir les meilleurs hyperparamètres sur le val)
 - Tester d'autres modèles (SARIMA, LSTM) et comparer les performances sur le val
+- Nettoyer le code, améliorer les commentaires, modularité, docstrings
 
 - L'entraînement du modèle XGBoost (`train.py`)  avec la configuration à entrer dans le fichier config/config.yaml
 - Les utilitaires utilisés par les notebooks et scripts (`utils/`)  
