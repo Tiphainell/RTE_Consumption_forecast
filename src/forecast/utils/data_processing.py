@@ -69,7 +69,7 @@ def prepare_data_set_for_training(df: pd.DataFrame,column_power, column_timestam
     #definition of train and testing set
     train, test = data_power[data_power["set"] == "train"], data_power[data_power["set"] == "test"]
 
-    columns_to_exclude = ["start_date", "set"]
+    columns_to_exclude = ["start_date", "set","day_name"]
     columns_y = [c for c in data_power.columns if c.lower().startswith("y_")]
     columns_x = [c for c in data_power.columns if c not in columns_y and c not in columns_to_exclude]
 

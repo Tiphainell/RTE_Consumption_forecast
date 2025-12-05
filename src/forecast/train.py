@@ -64,7 +64,6 @@ if __name__ == "__main__":
 
     cfg = TrainingConfig(config_path)
 
-    print(cfg)
 
 
     train(cfg)

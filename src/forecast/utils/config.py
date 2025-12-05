@@ -39,4 +39,4 @@ class TrainingConfig:
                 setattr(self, k, v)
 
     def __repr__(self):
-        return f"<column power={self.column_power} columns time stamp={self.column_time_stamp} n estimators={self.n_estimators} n epochs={self.max_depth}>"
+        return f"<column power={self.column_power} columns time stamp={self.column_time_stamp} n estimators={self.n_estimators} max depth={self.max_depth}>"

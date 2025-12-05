@@ -7,6 +7,8 @@ Cloner le repo et installer les dépendances :
 ```bash
 git clone git@github.com:Tiphainell/Storio_forecast.git
 cd Storio_forecast
+python3 -m venv .venv
+source .venv/bin/activate
 pip install .
 ```
 

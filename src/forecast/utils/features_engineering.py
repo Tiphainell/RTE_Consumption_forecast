@@ -77,7 +77,7 @@ def add_temporal_features(df: DataFrame, column_timestamp: str) -> DataFrame:
     df["week"] = df[column_timestamp].dt.isocalendar().week
 
     df['week'] = df['start_date'].dt.isocalendar().week
-    #df['day_name'] = df['start_date'].dt.day_name()
+    df['day_name'] = df['start_date'].dt.day_name()
     df["day_of_week"] = df["start_date"].dt.dayofweek
 
     # ajout de si week-end ou pas :
