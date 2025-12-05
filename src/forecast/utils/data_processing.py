@@ -1,10 +1,10 @@
 import pandas as pd
 from pandas import DataFrame
 import numpy as np
+from .features_engineering import add_temporal_features
 
 
-def split_train_test(df: DataFrame):
-
+def split_train_test(df: DataFrame, split_date):
     """
         Ajoute une colonne 'set' pour séparer train/test.
 
@@ -17,154 +17,86 @@ def split_train_test(df: DataFrame):
         """
     df = df.copy()
 
-    # S'assurer que start_date est datetime
-    df["start_date"] = pd.to_datetime(df["start_date"])
+
 
     # Créer la colonne 'set' : test à partir du 1er septembre 2025, train sinon
     df["set"] = "train"
-    df.loc[df["start_date"] >= pd.Timestamp("2025-09-01"), "set"] = "test"
+    df.loc[df["start_date"] >= split_date, "set"] = "test"
 
     return df
 
 
-def assign_season(month):
-    if month in [12, 1, 2]:
-        return "winter"
-    elif month in [3, 4, 5]:
-        return "spring"
-    elif month in [6, 7, 8]:
-        return "summer"
-    else:
-        return "autumn"
-
-
-def cyclic_features(df):
-    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
-    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
-    df["day_of_year_sin"] = np.sin(2 * np.pi * df["day_of_year"] / 365)
-    df["day_of_year_cos"] = np.cos(2 * np.pi * df["day_of_year"] / 365)
-    df["minute_sin"] = np.sin(2 * np.pi * df["minute"] / 60)
-    df["minute_cos"] = np.cos(2 * np.pi * df["minute"] / 60)
-    df["dow_sin"] = np.sin(2 * np.pi * df["day_of_week"] / 7)
-    df["dow_cos"] = np.cos(2 * np.pi * df["day_of_week"] / 7)
-
-    return df
-
-
-
-def add_lags(df, target_col, lags=None, rolling_windows=None):
+def create_Y_matrix(df, col: str = "average_imported_power_kw",
+                    horizon_hour: int = 24, step_per_hour: int = 4):
     """
-    Ajoute des lags et des rolling means pour un modèle de forecast.
+    df      : DataFrame avec index temporel
+    col     : nom de la colonne contenant les valeurs (ex: 'power')
+    horizon_hour : nombre d'heures à prédire
+    step_per_hour: nombre de pas par heure (ex: 4 pour 15 min)
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame avec une colonne target.
-    target_col : str
-        Nom de la colonne cible.
-    lags : list[int], optional
-        Liste des lags en nombre de périodes (ex: [1,4,96])
-    rolling_windows : list[int], optional
-        Liste des fenêtres pour rolling mean (ex: [4,96])
-
-    Returns
-    -------
-    df_new : pd.DataFrame
-        DataFrame avec les colonnes lag_x et rolling_y ajoutées.
-    """
-    df_new = df.copy()
-
-    if lags is None:
-        lags = [1, 4, 96]  # lags par défaut
-    if rolling_windows is None:
-        rolling_windows = [4, 96]  # rolling par défaut
-
-    # Ajouter les lags
-    for lag in lags:
-        df_new[f"{target_col}_lag_{lag}"] = df_new[target_col].shift(lag)
-
-    # Ajouter les rolling means
-    for window in rolling_windows:
-        df_new[f"{target_col}_rollmean_{window}"] = df_new[target_col].shift(1).rolling(window=window).mean()
-        # shift(1) pour ne pas inclure la valeur courante dans la moyenne
-
-    return df_new
-
-
-def add_temporal_features(df: DataFrame, column_timestamp: str) -> DataFrame:
-    df = df.copy()
-    df[column_timestamp] = pd.to_datetime(df[column_timestamp])
-    df["year"] = df[column_timestamp].dt.year
-    df["month"] = df[column_timestamp].dt.month
-    df["day"] = df[column_timestamp].dt.day
-    df["hour"] = df[column_timestamp].dt.hour
-    df["minute"] = df[column_timestamp].dt.minute
-    df["week"] = df[column_timestamp].dt.isocalendar().week
-
-    df['week'] = df['start_date'].dt.isocalendar().week
-    df['day_name'] = df['start_date'].dt.day_name()
-    df["day_of_week"] = df["start_date"].dt.dayofweek
-
-    # ajout de si week-end ou pas :
-    df["is_weekend"] = df["day_of_week"] >= 5
-    df["is_weekend"] = df["is_weekend"].astype(int)
-
-    # Ajout des vacances d'hiver
-    df['is_winter_holiday'] = (
-            ((df['start_date'].dt.month == 12) & (df['start_date'].dt.day >= 20)) |
-            ((df['start_date'].dt.month == 1) & (df['start_date'].dt.day <= 5))
-    )
-
-    # Ajout des vacances d'été
-    df['is_summer_holiday'] = (df['start_date'].dt.month == 8)
-
-
-    # Ajout 15 août
-    df['15_august'] = (
-        ((df['start_date'].dt.month == 8) & (df['start_date'].dt.day == 15))
-    )
-    #Season added
-    df["season"] = df["month"].apply(assign_season)
-
-
-    #Night shift
-    h = df["start_date"].dt.hour
-    df["night_shift"] = ((h >= 18) | (h <= 3)).astype(int)
-
-    #lags added and rolling mean average
-    df=add_lags(df,"average_imported_power_kw")
-    df=cyclic_features(df)
-
-    return df
-
-
-def compute_mean_freq_dynamic(df: DataFrame, column: str = "average_imported_power_kw") -> DataFrame:
-    """
-    Calcule des moyennes glissantes selon différentes fréquences temporelles
-    et les affecte à chaque ligne du DataFrame.
-
-    Args:
-        df : DataFrame avec une colonne datetime 'timestamp' et la colonne à moyenner
-        column : nom de la colonne sur laquelle calculer les moyennes
-
-    Returns:
-        DataFrame avec de nouvelles colonnes 'imported_power_kw_<freq>_avg'
+    Retourne :
+        - df avec de nouvelles colonnes y_1, y_2, ..., y_horizon
+        - Y_matrix : np.ndarray shape (n_samples, horizon)
     """
     df = df.copy()
+    values = df[col].values
+    horizon = horizon_hour * step_per_hour
+    n_samples = len(df)
 
-    # Dictionnaire : clé = nouvelle colonne, valeur = colonnes pour le groupby
-    freq_groups = {
-        'year': ['year'],
-        'month': ['year', 'month'],
-        'day': ['year', 'month', 'day'],
-        'hour': ['year', 'month', 'day', 'hour'],
-        'minute': ['year', 'month', 'day', 'hour', 'minute'],
-        'week': ['year', 'week']
-    }
+    # Créer la matrice Y initialisée avec NaN
+    Y_matrix = np.full((n_samples, horizon), np.nan)
 
-    # Boucle dynamique sur les fréquences
-    for freq, group_cols in freq_groups.items():
-        new_col = f"{column}_{freq}_avg"
-        df[new_col] = df.groupby(group_cols)[column].transform('mean')
+    for i in range(n_samples - horizon):
+        Y_matrix[i, :] = values[i + 1: i + 1 + horizon]
 
-    return df
+    # Ajouter les colonnes y_1, y_2, ... au DataFrame (optionnel)
+    for j in range(horizon):
+        df[f"y_{j + 1}"] = Y_matrix[:, j]
+
+    return df, Y_matrix
+
+
+def prepare_data_set_for_training(df: pd.DataFrame,column_power, column_timestamp, horizon, step_per_hour,split_date):
+    # Create Y for training
+    data_power, Y = create_Y_matrix(df, column_power, horizon, step_per_hour)
+
+    # add temporal features
+    data_power = add_temporal_features(data_power, column_timestamp)
+
+    # split train/test
+    data_power = split_train_test(data_power,split_date)
+
+    #definition of train and testing set
+    train, test = data_power[data_power["set"] == "train"], data_power[data_power["set"] == "test"]
+
+    columns_to_exclude = ["start_date", "set"]
+    columns_y = [c for c in data_power.columns if c.lower().startswith("y_")]
+    columns_x = [c for c in data_power.columns if c not in columns_y and c not in columns_to_exclude]
+
+    X_train = train[columns_x]
+    y_train = train[columns_y]
+
+    X_test = test[columns_x]
+    y_test = test[columns_y]
+
+    return X_train, y_train, X_test, y_test
+
+
+
+
+
+def prediction_in_production(matrice_pred, window):
+    """
+    matrice_pred : matrice NxH
+    window : nb d'horizons que tu consommes (ex : 4)
+    step : pas de réactualisation (ex : 4)
+    """
+
+    # On prend les lignes : 0, 4, 8, 12, ...
+    rows = np.arange(0, matrice_pred.shape[0], window)
+
+    # On extrait les window premières prédictions
+    selected = matrice_pred[rows, :window]  # shape = (len(rows), window)
+
+    # On "aplatit" en 1D
+    return selected.reshape(-1)

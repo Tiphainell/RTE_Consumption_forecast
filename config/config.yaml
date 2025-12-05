@@ -1,0 +1,26 @@
+source_file:
+ path: "/home/tiphainell/Documents/Administratif/avenir professionnel/CV/Storio Energy/forecast_assignment-main/power.csv"
+ column_power_name: "average_imported_power_kw"
+ column_timestamps: "start_date"
+
+task:
+ hourly_horizon: 24
+ step_per_hour: 4
+
+
+model:
+ name: "xgboost"
+ max_depth: 10
+ n_estimators: 10
+
+
+split_train_test:
+ date_split: "2025-06-01"
+
+
+
+
+
+
+
+
