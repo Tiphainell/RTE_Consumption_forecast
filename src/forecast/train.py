@@ -1,20 +1,28 @@
 import argparse
 from utils.config import TrainingConfig
 import pandas as pd
-from utils.data_processing import prepare_data_set_for_training, create_Y_matrix
+from utils.data_processing import prepare_data_set_for_training, create_Y_matrix,format_rte_files
 from sklearn.multioutput import MultiOutputRegressor
 import xgboost as xgb
 import joblib
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from src.forecast.utils.data_processing import format_rte_files, concatenate_and_format_rte_files
 from pathlib import Path
 import numpy as np
 import os
 
 def train(cfg: TrainingConfig):
     #dataset
-    data_power = pd.read_csv(cfg.source_path)
-    X_train, y_train, X_test, y_test=prepare_data_set_for_training(data_power,cfg.column_power,cfg.column_time_stamp,cfg.hourly_horizon,cfg.step_per_hour,cfg.split_date)
+    data_power = concatenate_and_format_rte_files(cfg.source_path)
 
+    X_train, y_train, X_test, y_test=prepare_data_set_for_training(data_power,cfg.column_power,cfg.column_time_stamp,cfg.hourly_horizon,cfg.step_per_hour,cfg.split_date)
+    print("Nombre de NaN dans y_train:", y_train["y_1"].isna().sum())
+    print("Indices où NaN :", y_train[y_train["y_1"].isna()].index)
+
+    # calcul de predictions d'un modèle naif (même valeur il y a une semaine)
+    lag_model_naif = 672
+    _, Y_model_naif = create_Y_matrix(X_test, f"Consommation_lag_{lag_model_naif}", cfg.hourly_horizon,
+                                      cfg.step_per_hour)
     #Xg Boost training
     # voir si je change le nombre d'hyperparamètres
     model = xgb.XGBRegressor(n_estimators=cfg.n_estimators, max_depth=cfg.max_depth)
@@ -28,9 +36,7 @@ def train(cfg: TrainingConfig):
     y_pred_xgboost_24h = trained_model.predict(X_test)
 
 
-    #calcul de predictions d'un modèle naif (même valeur il y a une semaine)
-    lag_model_naif=672
-    _, Y_model_naif = create_Y_matrix(X_test, f"average_imported_power_kw_lag_{lag_model_naif}", cfg.hourly_horizon, cfg.step_per_hour)
+
 
     # Créer un dictionnaire pour tout sauvegarder
     predictions_dict = {

@@ -66,7 +66,7 @@ def add_lags(df, target_col, lags=None, rolling_windows=None):
     return df_new
 
 
-def add_temporal_features(df: DataFrame, column_timestamp: str) -> DataFrame:
+def add_temporal_features(df: DataFrame, column_timestamp: str, column_consommation: str) -> DataFrame:
     df = df.copy()
     df[column_timestamp] = pd.to_datetime(df[column_timestamp])
     df["year"] = df[column_timestamp].dt.year
@@ -76,9 +76,9 @@ def add_temporal_features(df: DataFrame, column_timestamp: str) -> DataFrame:
     df["minute"] = df[column_timestamp].dt.minute
     df["week"] = df[column_timestamp].dt.isocalendar().week
 
-    df['week'] = df['start_date'].dt.isocalendar().week
-    df['day_name'] = df['start_date'].dt.day_name()
-    df["day_of_week"] = df["start_date"].dt.dayofweek
+    df['week'] = df[column_timestamp].dt.isocalendar().week
+    df['day_name'] = df[column_timestamp].dt.day_name()
+    df["day_of_week"] = df[column_timestamp].dt.dayofweek
 
     # ajout de si week-end ou pas :
     df["is_weekend"] = df["day_of_week"] >= 5
@@ -86,34 +86,34 @@ def add_temporal_features(df: DataFrame, column_timestamp: str) -> DataFrame:
 
     # Ajout des vacances d'hiver
     df['is_winter_holiday'] = (
-            ((df['start_date'].dt.month == 12) & (df['start_date'].dt.day >= 20)) |
-            ((df['start_date'].dt.month == 1) & (df['start_date'].dt.day <= 5))
+            ((df[column_timestamp].dt.month == 12) & (df[column_timestamp].dt.day >= 20)) |
+            ((df[column_timestamp].dt.month == 1) & (df[column_timestamp].dt.day <= 5))
     )
 
     # Ajout des vacances d'été
-    df['is_summer_holiday'] = (df['start_date'].dt.month == 8)
+    df['is_summer_holiday'] = (df[column_timestamp].dt.month == 8)
 
 
     # Ajout 15 août
     df['15_august'] = (
-        ((df['start_date'].dt.month == 8) & (df['start_date'].dt.day == 15))
+        ((df[column_timestamp].dt.month == 8) & (df[column_timestamp].dt.day == 15))
     )
     #Season added
     df["season"] = df["month"].apply(assign_season)
 
 
     #Night shift
-    h = df["start_date"].dt.hour
+    h = df[column_timestamp].dt.hour
     df["night_shift"] = ((h >= 18) | (h <= 3)).astype(int)
 
     #lags added and rolling mean average
-    df=add_lags(df,"average_imported_power_kw")
+    df=add_lags(df,target_col = column_consommation)
     df=cyclic_features(df)
 
     return df
 
 
-def compute_mean_freq_dynamic(df: DataFrame, column: str = "average_imported_power_kw") -> DataFrame:
+def compute_mean_freq_dynamic(df: DataFrame, column_consommation: str) -> DataFrame:
     """
     Calcule des moyennes glissantes selon différentes fréquences temporelles
     et les affecte à chaque ligne du DataFrame.
@@ -135,11 +135,14 @@ def compute_mean_freq_dynamic(df: DataFrame, column: str = "average_imported_pow
         'hour': ['year', 'month', 'day', 'hour'],
         'minute': ['year', 'month', 'day', 'hour', 'minute'],
         'week': ['year', 'week']
+
     }
+
 
     # Boucle dynamique sur les fréquences
     for freq, group_cols in freq_groups.items():
-        new_col = f"{column}_{freq}_avg"
-        df[new_col] = df.groupby(group_cols)[column].transform('mean')
+        new_col = f"{column_consommation}_{freq}_avg"
+        df[new_col] = df.groupby(group_cols)[column_consommation].transform('mean')
+        print(new_col)
 
     return df
