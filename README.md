@@ -63,9 +63,13 @@ Le modèle a été initialement configuré avec 10 arbres et une profondeur maxi
 
 Pour une approche plus complète, un tuning des hyperparamètres sur un jeu de validation permettrait d’optimiser davantage les performances.
 
+### Entrainement
+
+Entrainement sur la période du 1er Janvier 2021 à fin avril 2023.
+
 ### Evaluation
 
-Les performances de XGBoost sont comparées à celles d’un modèle naïf (prédiction identique à la consommation de la semaine précédente) en utilisant la MAE (Mean Absolute Error) :
+ Le test set est composé de la série temporelle de mai 2023 à décembre 2023. Les performances de XGBoost sont comparées à celles d’un modèle naïf (prédiction identique à la consommation de la semaine précédente) en utilisant la MAE (Mean Absolute Error) :
 
 - moyenne sur 24h,
 - et dans le scénario où le modèle est réentraîné toutes les heures pour améliorer la précision sur les premiers pas.
@@ -73,14 +77,15 @@ Les performances de XGBoost sont comparées à celles d’un modèle naïf (pré
 ## Résultats
 Test set : mai 2023 – décembre 2023 (7 mois)
 
-- MAE moyenne sur 24h : 1 632 MW (~3.6% de la consommation moyenne : 45 560 MW)
-- Modèle naïf : 2 771 MW → réduction d’erreur de 40% avec XGBoost
+- MAE de XGBoost moyenne sur 24h : 1 632 MW (~3.6% de la consommation moyenne : 45 560 MW)
+- MAE du Modèle naïf : 2 771 MW → réduction d’erreur de 40% avec XGBoost
 
 MAE par horizon (96 pas de 15 min → 24h) :
 
-![img_2.png](img_2.png)
 
-Amélioration avec ré-entraînement horaire :
+![img_4.png](img_4.png)
+
+Amélioration avec ré-entraînement horaire (les 4 premières prédictions sont utilisées) :
 
 - MAE sur 4 premiers pas : 610 MW (~1% de la consommation moyenne)
 - Réduction d’erreur de 78% par rapport au modèle naïf

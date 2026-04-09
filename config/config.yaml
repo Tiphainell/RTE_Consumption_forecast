@@ -1,7 +1,7 @@
 source_file:
- path: "/home/tiphainell/Documents/Administratif/avenir professionnel/CV/Storio Energy/forecast_assignment-main/power.csv"
- column_power_name: "average_imported_power_kw"
- column_timestamps: "start_date"
+ path: "/home/tiphainell/Documents/3.Energy_RTE/data_processed"
+ column_power_name: "Consommation"
+ column_timestamps: "timestamp"
 
 task:
  hourly_horizon: 24
@@ -15,7 +15,7 @@ model:
 
 
 split_train_test:
- date_split: "2025-06-01"
+ date_split: "2023-05-01"
 
 
 
